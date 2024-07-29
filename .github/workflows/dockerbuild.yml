@@ -54,11 +54,11 @@ jobs:
         run: |-
                   cosign sign -y ghcr.io/tremolosecurity/openunison-jib-builder3:${{ env.TAG }}    
 
-                  - uses: anchore/sbom-action@v0
-                  with:
-                    image: ghcr.io/tremolosecurity/openunison-jib-builder3:${{ env.TAG }}
-                    format: spdx
-                    output-file: /tmp/spdxg
+      - uses: anchore/sbom-action@v0
+        with:
+          image: ghcr.io/tremolosecurity/openunison-jib-builder3:${{ env.TAG }}
+          format: spdx
+          output-file: /tmp/spdxg
               
       - name: attach sbom to images
         run: |-
