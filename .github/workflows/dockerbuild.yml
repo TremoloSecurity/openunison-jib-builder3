@@ -47,25 +47,25 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
-            ghcr.io/${{ env.REPO }}/openunison-jib-builder3:latest
-            ghcr.io/${{ env.REPO }}/openunison-jib-builder3:${{ env.TAG }}
-            ghcr.io/${{ env.REPO }}/openunison-jib-builder3:${{ env.SHORT_TAG }}
+            ghcr.io/${{ env.GITHUB_REPOSITORY }}:latest
+            ghcr.io/${{ env.GITHUB_REPOSITORY }}:${{ env.TAG }}
+            ghcr.io/${{ env.GITHUB_REPOSITORY }}:${{ env.SHORT_TAG }}
       
 
 
       - name: sign images
         run: |-
-                  cosign sign -y ghcr.io/${{ env.REPO }}/openunison-jib-builder3:${{ env.TAG }}    
+                  cosign sign -y ghcr.io/${{ env.GITHUB_REPOSITORY }}:${{ env.TAG }}    
 
       - uses: anchore/sbom-action@v0
         with:
-          image: ghcr.io/${{ env.REPO }}/openunison-jib-builder3:${{ env.TAG }}
+          image: ghcr.io/${{ env.GITHUB_REPOSITORY }}:${{ env.TAG }}
           format: spdx
           output-file: /tmp/spdxg
               
       - name: attach sbom to images
         run: |-
-              cosign attach sbom --sbom /tmp/spdxg ghcr.io/${{ env.REPO }}/openunison-jib-builder3:${{ env.TAG }}
-              GH_SBOM_SHA=$(cosign verify --certificate-oidc-issuer-regexp='.*' --certificate-identity-regexp='.*' ghcr.io/${{ env.REPO }}/openunison-jib-builder3:${{ env.TAG }} 2>/dev/null | jq -r '.[0].critical.image["docker-manifest-digest"]' | cut -c 8-)
+              cosign attach sbom --sbom /tmp/spdxg ghcr.io/${{ env.GITHUB_REPOSITORY }}:${{ env.TAG }}
+              GH_SBOM_SHA=$(cosign verify --certificate-oidc-issuer-regexp='.*' --certificate-identity-regexp='.*' ghcr.io/${{ env.GITHUB_REPOSITORY }}:${{ env.TAG }} 2>/dev/null | jq -r '.[0].critical.image["docker-manifest-digest"]' | cut -c 8-)
               echo "GH_SBOM_SHA: $GH_SBOM_SHA"
-              cosign sign -y ghcr.io/${{ env.REPO }}/openunison-jib-builder3:sha256-$GH_SBOM_SHA.sbom
+              cosign sign -y ghcr.io/${{ env.GITHUB_REPOSITORY }}:sha256-$GH_SBOM_SHA.sbom
