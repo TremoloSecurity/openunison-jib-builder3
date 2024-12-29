@@ -13,11 +13,6 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
-      - name: get identity
-        uses: tremolosecurity/action-generate-oidc-jwt@v1.1
-        with:
-          audience:  ${{ secrets.WH_AUDIENCE }}
-          environmentVariableName: "WHPROXY"
       -
         name: Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -72,6 +67,12 @@ jobs:
               GH_SBOM_SHA=$(cosign verify --certificate-oidc-issuer-regexp='.*' --certificate-identity-regexp='.*' ghcr.io/${{ env.REPO }}:${{ env.TAG }} 2>/dev/null | jq -r '.[0].critical.image["docker-manifest-digest"]' | cut -c 8-)
               echo "GH_SBOM_SHA: $GH_SBOM_SHA"
               cosign sign -y ghcr.io/${{ env.REPO }}:sha256-$GH_SBOM_SHA.sbom
+
+      - name: get identity
+        uses: tremolosecurity/action-generate-oidc-jwt@v1.1
+        with:
+          audience:  ${{ secrets.WH_AUDIENCE }}
+          environmentVariableName: "WHPROXY"
 
       - name: rebuild dependents
         run: |-
