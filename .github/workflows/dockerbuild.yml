@@ -13,56 +13,66 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
-      -
-        name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
-      -
-        name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-      - uses: actions/checkout@v1
-      
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@main
-
-      - name: Login to container Registry
-        uses: docker/login-action@v2
+      - name: get identity
+        uses: tremolosecurity/action-generate-oidc-jwt@v1.1
         with:
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          registry: ghcr.io
+          audience:  ${{ secrets.WH_AUDIENCE }}
+          environmentVariableName: "WHPROXY"
+      # -
+      #   name: Set up QEMU
+      #   uses: docker/setup-qemu-action@v1
+      # -
+      #   name: Set up Docker Buildx
+      #   uses: docker/setup-buildx-action@v1
+      # - uses: actions/checkout@v1
+      
+      # - name: Install Cosign
+      #   uses: sigstore/cosign-installer@main
 
-      - name: generate tag
-        run: |-
-            export PROJ_VERSION="3"
-            echo "Project Version: $PROJ_VERSION"
-            echo "TAG=$PROJ_VERSION-$(echo $GITHUB_SHA | cut -c 1-6)" >> $GITHUB_ENV
-            echo "SHORT_TAG=$PROJ_VERSION" >> $GITHUB_ENV
+      # - name: Login to container Registry
+      #   uses: docker/login-action@v2
+      #   with:
+      #     username: ${{ github.repository_owner }}
+      #     password: ${{ secrets.GITHUB_TOKEN }}
+      #     registry: ghcr.io
+
+      # - name: generate tag
+      #   run: |-
+      #       export PROJ_VERSION="3"
+      #       echo "Project Version: $PROJ_VERSION"
+      #       echo "TAG=$PROJ_VERSION-$(echo $GITHUB_SHA | cut -c 1-6)" >> $GITHUB_ENV
+      #       echo "SHORT_TAG=$PROJ_VERSION" >> $GITHUB_ENV
 
             
-      -  name: Build and push
-         id: docker_build
-         uses: docker/build-push-action@v2
-         with:
-          push: true
-          tags: |
-            ghcr.io/tremolosecurity/openunison-jib-builder3:latest
-            ghcr.io/tremolosecurity/openunison-jib-builder3:${{ env.TAG }}
-            ghcr.io/tremolosecurity/openunison-jib-builder3:${{ env.SHORT_TAG }}
+      # -  name: Build and push
+      #    id: docker_build
+      #    uses: docker/build-push-action@v2
+      #    with:
+      #     push: true
+      #     tags: |
+      #       ghcr.io/tremolosecurity/openunison-jib-builder3:latest
+      #       ghcr.io/tremolosecurity/openunison-jib-builder3:${{ env.TAG }}
+      #       ghcr.io/tremolosecurity/openunison-jib-builder3:${{ env.SHORT_TAG }}
       
 
-      - name: sign images
-        run: |-
-                  cosign sign -y ghcr.io/tremolosecurity/openunison-jib-builder3:${{ env.TAG }}    
+      # - name: sign images
+      #   run: |-
+      #             cosign sign -y ghcr.io/tremolosecurity/openunison-jib-builder3:${{ env.TAG }}    
 
-      - uses: anchore/sbom-action@v0
-        with:
-          image: ghcr.io/tremolosecurity/openunison-jib-builder3:${{ env.TAG }}
-          format: spdx
-          output-file: /tmp/spdxg
+      # - uses: anchore/sbom-action@v0
+      #   with:
+      #     image: ghcr.io/tremolosecurity/openunison-jib-builder3:${{ env.TAG }}
+      #     format: spdx
+      #     output-file: /tmp/spdxg
               
-      - name: attach sbom to images
+      # - name: attach sbom to images
+      #   run: |-
+      #         cosign attach sbom --sbom /tmp/spdxg ghcr.io/tremolosecurity/openunison-jib-builder3:${{ env.TAG }}
+      #         GH_SBOM_SHA=$(cosign verify --certificate-oidc-issuer-regexp='.*' --certificate-identity-regexp='.*' ghcr.io/tremolosecurity/openunison-jib-builder3:${{ env.TAG }} 2>/dev/null | jq -r '.[0].critical.image["docker-manifest-digest"]' | cut -c 8-)
+      #         echo "GH_SBOM_SHA: $GH_SBOM_SHA"
+      #         cosign sign -y ghcr.io/tremolosecurity/openunison-jib-builder3:sha256-$GH_SBOM_SHA.sbom
+
+      - name: rebuild dependents
         run: |-
-              cosign attach sbom --sbom /tmp/spdxg ghcr.io/tremolosecurity/openunison-jib-builder3:${{ env.TAG }}
-              GH_SBOM_SHA=$(cosign verify --certificate-oidc-issuer-regexp='.*' --certificate-identity-regexp='.*' ghcr.io/tremolosecurity/openunison-jib-builder3:${{ env.TAG }} 2>/dev/null | jq -r '.[0].critical.image["docker-manifest-digest"]' | cut -c 8-)
-              echo "GH_SBOM_SHA: $GH_SBOM_SHA"
-              cosign sign -y ghcr.io/tremolosecurity/openunison-jib-builder3:sha256-$GH_SBOM_SHA.sbom
+          curl -H "Authorization: Bearer $WHPROXY" ${{ secrets.WH_AUDIENCE }}webhook/openunison-jib-builder3-dependent
+        
