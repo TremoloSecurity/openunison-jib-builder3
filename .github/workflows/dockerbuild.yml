@@ -24,13 +24,6 @@ jobs:
       - name: Install Cosign
         uses: sigstore/cosign-installer@main
 
-      - name: Login to container Registry
-        uses: docker/login-action@v2
-        with:
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          registry: ghcr.io
-
       - name: downcase REPO
         run: |
             echo "REPO=${GITHUB_REPOSITORY,,}" >>${GITHUB_ENV}
@@ -43,6 +36,13 @@ jobs:
             echo "SHORT_TAG=$PROJ_VERSION" >> $GITHUB_ENV
 
             
+      - name: Login to container Registry
+        uses: docker/login-action@v2
+        with:
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+
       -  name: Build and push
          id: docker_build
          uses: docker/build-push-action@v2
@@ -74,3 +74,15 @@ jobs:
               GH_SBOM_SHA=$(cosign verify --certificate-oidc-issuer-regexp='.*' --certificate-identity-regexp='.*' ghcr.io/${{ env.REPO }}:${{ env.TAG }} 2>/dev/null | jq -r '.[0].critical.image["docker-manifest-digest"]' | cut -c 8-)
               echo "GH_SBOM_SHA: $GH_SBOM_SHA"
               cosign sign -y ghcr.io/${{ env.REPO }}:sha256-$GH_SBOM_SHA.sbom
+
+      - name: get identity
+        uses: tremolosecurity/action-generate-oidc-jwt@v1.1
+        with:
+          audience:  ${{ secrets.WH_AUDIENCE }}
+          environmentVariableName: "WHPROXY"
+
+      - name: rebuild dependents
+        run: |-
+          curl -H "Authorization: Bearer $WHPROXY" ${{ secrets.WH_AUDIENCE }}webhook/openunison-jib-builder3-dependent
+        
+              
