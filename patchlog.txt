@@ -126,3 +126,4 @@ Automatic Update - 20261023T020748.065Z
 Automatic Update - 20261029T020812.066Z
 Automatic Update - 20261106T020812.490Z
 Automatic Update - 20261114T020905.490Z
+force update for openjdk-21 21.0.13.1
